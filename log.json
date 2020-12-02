@@ -1,0 +1,11 @@
+{
+  "@timestamp": "2020-11-24T02:33:53.356Z",
+  "level": "INFO",
+  "logger_name": "ca.bnc.Application",
+  "trace_id": "0",
+  "span_id": "0",
+  "group": "ca.bnc.sbip",
+  "name": "ingress-gateway",
+  "version": "0.31.0",
+  "message": "The following profiles are active: studio"
+}
