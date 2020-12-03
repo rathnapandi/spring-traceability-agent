@@ -2,13 +2,13 @@
 traceability_agent:
   inputs:
     - type: log
-      paths: ${EVENT_LOG_PATHS:/Users/rnatarajan/go/src/github.com/rathnapandi/spring-traceability-agent/log.json}
+      paths: ${EVENT_LOG_PATHS:/home/ubuntu/go/src/github.com/rathnapandi/spring-traceability-agent/log.json}
       #include_lines: ['.*"type":"transaction".*"type":"http".*']
-#      ignore_older: 1h
-#      close_inactive: 10m
-#      clean_inactive: 2h
-#      close_removed: true
-#      clean_removed: true
+  #      ignore_older: 1h
+  #      close_inactive: 10m
+  #      clean_inactive: 2h
+  #      close_removed: true
+  #      clean_removed: true
   # Settings for connecting to AMPLIFY Central
   central:
     url: ${CENTRAL_URL:https://apicentral.axway.com}
@@ -33,11 +33,10 @@ traceability_agent:
       cipherSuites: ${CENTRAL_SSL_CIPHERSUITES:[]}
       insecureSkipVerify: ${CENTRAL_SSL_INSECURESKIPVERIFY:false}
     proxyUrl: ${CENTRAL_PROXYURL:""}
-
-  status:
-    port: ${STATUS_PORT:8990}
-    healthCheckPeriod: ${STATUS_HEALTHCHECKPERIOD:3m}
-    healthCheckInterval: ${STATUS_HEALTHCHECKINTERVAL:30s}
+  # status:
+  #   port: ${STATUS_PORT:8990}
+  #   healthCheckPeriod: ${STATUS_HEALTHCHECKPERIOD:3m}
+  #   healthCheckInterval: ${STATUS_HEALTHCHECKINTERVAL:30s}
 
 # Send output to Central Database
 output.traceability:
@@ -74,4 +73,4 @@ logging:
   # Send all logging output to stderr
   to_stderr: true
   # Set log level
-  level: ${LOG_LEVEL:info}
+  level: ${LOG_LEVEL:debug}

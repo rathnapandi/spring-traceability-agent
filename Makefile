@@ -76,9 +76,9 @@ ${WORKSPACE}/traceability_agent:
 		-ldflags="-X 'git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd.BuildTime=$${time}' \
 				-X 'git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd.BuildVersion=$${version}' \
 				-X 'git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd.BuildCommitSha=$${commit_id}' \
-				-X 'git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd.BuildAgentName=EnterpriseEdgeGatewayTraceabilityAgent' \
+				-X 'git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd.BuildAgentName=SpringTraceabilityAgent' \
 							-X 'git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd/service.Name=traceability-agent' \
-							-X 'git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd/service.Description=Enterprise Edge Gateway Traceability Agent'" \
+							-X 'git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd/service.Description=Spring Traceability Agent'" \
 		-a -o ${WORKSPACE}/bin/traceability_agent ${WORKSPACE}/traceability_agent.go
 
 build: ${WORKSPACE}/traceability_agent

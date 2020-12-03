@@ -1,0 +1,4 @@
+# IDE project directories
+.vscode/
+.idea/
+bin/
