@@ -21,6 +21,7 @@ git.ecd.axway.org/apigov/apic_agents_sdk/pkg/cmd/service/daemon
 git.ecd.axway.org/apigov/apic_agents_sdk/pkg/config
 git.ecd.axway.org/apigov/apic_agents_sdk/pkg/notification
 git.ecd.axway.org/apigov/apic_agents_sdk/pkg/traceability
+git.ecd.axway.org/apigov/apic_agents_sdk/pkg/transaction
 git.ecd.axway.org/apigov/apic_agents_sdk/pkg/util
 git.ecd.axway.org/apigov/apic_agents_sdk/pkg/util/errors
 git.ecd.axway.org/apigov/apic_agents_sdk/pkg/util/exception

@@ -37,23 +37,6 @@ type HTTPTransactionDetail struct {
 	LocalPort     string      `json:"localPort"`
 }
 
-// JMSTransactionDetail - JMS specific transaction details
-type JMSTransactionDetail struct {
-	JMSMessageID     string `json:"jmsMessageID"`
-	JMSCorrelationID string `json:"jmsCorrelationID"`
-	JMSDestination   string `json:"jmsDestination"`
-	JMSProviderURL   string `json:"jmsProviderURL"`
-	JMSDeliveryMode  int    `json:"jmsDeliveryMode"`
-	JMSPriority      int    `json:"jmsPriority"`
-	JMSReplyTo       string `json:"jmsReplyTo"`
-	JMSRedelivered   int    `json:"jmsRedelivered"`
-	JMSTimestamp     int    `json:"jmsTimestamp"`
-	JMSExpiration    int    `json:"jmsExpiration"`
-	JMSType          string `json:"jmsType"`
-	JMSStatus        string `json:"jmsStatus"`
-	JMSStatusText    string `json:"jmsStatusText"`
-}
-
 // Transaction - transaction info gathered from the api calls
 type Transaction struct {
 	Details  TransactionDetail   `json:"details"`
@@ -123,4 +106,16 @@ type EventLogEntry struct {
 	Status          string              `json:"status"`
 	Time            int                 `json:"time"`
 	Type            string              `json:"type"`
+}
+
+type SpringLogEntry struct {
+	Timestamp  string `json:"@timestamp"`
+	Level      string
+	LoggerName string `json:"logger_name"`
+	TraceId    string `json:"@trace_id"`
+	SpanId     string `json:"@span_id"`
+	Group      string
+	Name       string
+	Version    string
+	Message    string
 }

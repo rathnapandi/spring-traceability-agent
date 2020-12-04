@@ -47,7 +47,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	}
 
 	// Create APIC Client to register the healthcheck
-	apic.New(AgentCfg.Central)
+	client := apic.New(AgentCfg.Central)
 
 	// Init the healthcheck API
 	hc.SetStatusConfig(AgentCfg.Status)
@@ -70,7 +70,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 		return nil, coreerrors.ErrInitServicesNotReady
 	}
 
-	eventProcessor := apigw.New()
+	eventProcessor := apigw.New(AgentCfg, traceability.GetMaxRetries(), client)
 	traceability.SetOutputEventProcessor(eventProcessor)
 
 	// Initialize the filebeat to read events

@@ -1,34 +1,46 @@
 package apigw
 
 import (
-
+	"encoding/json"
 	"fmt"
+	coreapi "git.ecd.axway.org/apigov/apic_agents_sdk/pkg/api"
+	"git.ecd.axway.org/apigov/apic_agents_sdk/pkg/apic"
+	"git.ecd.axway.org/apigov/apic_agents_sdk/pkg/apic/apiserver/models/management/v1alpha1"
+
+	//coreapi "git.ecd.axway.org/apigov/apic_agents_sdk/pkg/api"
+	//"git.ecd.axway.org/apigov/apic_agents_sdk/pkg/apic/apiserver/models/management/v1alpha1"
+	//corecfg "git.ecd.axway.org/apigov/apic_agents_sdk/pkg/config"
+	"git.ecd.axway.org/apigov/apic_agents_sdk/pkg/transaction"
+	coreerrors "git.ecd.axway.org/apigov/apic_agents_sdk/pkg/util/errors"
+	//"git.ecd.axway.org/apigov/service-mesh-agent/pkg/apicauth"
+	"github.com/rathnapandi/spring-traceability-agent/pkg/agent/config"
+	"net/http"
+	"strconv"
+	"time"
 
 	"regexp"
 
 	"github.com/elastic/beats/v7/libbeat/logp"
 	"github.com/elastic/beats/v7/libbeat/publisher"
 	//"github.com/tidwall/gjson"
-
-
 )
 
 var debugf = logp.MakeDebug("apigw")
 
 //EventProcessor -
 type EventProcessor struct {
-//	tenantID                      string
-//	deployment                    string
-//	environment                   string
-//	environmentID                 string
-//	teamID                        string
-//	url                           string
-//	authToken                     string
-//	maxRetries                    int
-////	v7Client                      *V7HTTPClient
-////	apiWatcher                    apimanager.APIWatcher
-//	eventGenerator                transaction.EventGenerator
-//	prepareTransactionLogEventMap map[string](func(transactionLeg Transaction, correlationID string) transaction.LogEvent)
+	tenantID      string
+	deployment    string
+	environment   string
+	environmentID string
+	teamID        string
+	url           string
+	authToken     string
+	maxRetries    int
+	//	v7Client                      *V7HTTPClient
+	//	apiWatcher                    apimanager.APIWatcher
+	eventGenerator                transaction.EventGenerator
+	prepareTransactionLogEventMap map[string](func(transactionLeg Transaction, correlationID string) transaction.LogEvent)
 }
 
 var eventFileRegEx = regexp.MustCompile(`group-[0-9]*_instance-([0-9]*).*`)
@@ -37,21 +49,28 @@ const (
 	condorKey  = "condor"
 	retriesKey = "retries"
 	httpKey    = "http"
-	jmsKey     = "jms"
+	//jmsKey     = "jms"
 )
 
+var client apic.Client
+var environmentURL string
+
 // New - return a new EventProcessor
-func New() *EventProcessor {
+func New(agentConfig config.AgentConfig, maxRetries int, apicClient apic.Client) *EventProcessor {
+	client = apicClient
 	ep := &EventProcessor{
-	//	tenantID:       agentConfig.Central.GetTenantID(),
-	//	deployment:     agentConfig.Central.GetAPICDeployment(),
-	//	environment:    agentConfig.Central.GetEnvironmentName(),
-	//	environmentID:  agentConfig.Central.GetEnvironmentID(),
-	//	teamID:         agentConfig.Central.GetTeamID(),
-	////	apiWatcher:     apimanager.GetWatcher(),
-	//	maxRetries:     maxRetries,
-	//	eventGenerator: transaction.NewEventGenerator(),
+		tenantID:      agentConfig.Central.GetTenantID(),
+		deployment:    agentConfig.Central.GetAPICDeployment(),
+		environment:   agentConfig.Central.GetEnvironmentName(),
+		environmentID: agentConfig.Central.GetEnvironmentID(),
+		teamID:        agentConfig.Central.GetTeamID(),
+		//	apiWatcher:     apimanager.GetWatcher(),
+		maxRetries:     maxRetries,
+		eventGenerator: transaction.NewEventGenerator(),
 	}
+	//environment = agentConfig.Central.GetEnvironmentName()
+	environmentURL = agentConfig.Central.GetEnvironmentURL()
+
 	//if agentConfig.Gateway.EnableAPICalls {
 	//	ep.v7Client = NewV7Client(agentConfig.Gateway)
 	//}
@@ -60,71 +79,65 @@ func New() *EventProcessor {
 	//	httpKey: ep.prepareHTTPTransactionLogEvent,
 	//	//jmsKey:  ep.prepareJMSTransactionLogEvent,
 	//}
-
-	//debugf("Event Processor Created with EnvironmentID: %s", ep.environmentID)
+	//tokenURL := agentConfig.Central.GetAuthConfig().GetTokenURL()
+	//aud := agentConfig.Central.GetAuthConfig().GetAudience()
+	//priKey := agentConfig.Central.GetAuthConfig().GetPrivateKey()
+	//pubKey := agentConfig.Central.GetAuthConfig().GetPublicKey()
+	//keyPwd := agentConfig.Central.GetAuthConfig().GetKeyPassword()
+	//clientID := agentConfig.Central.GetAuthConfig().GetClientID()
+	//authTimeout := agentConfig.Central.GetAuthConfig().GetTimeout()
+	//platformTokenGetter := &platformTokenGetter{
+	//	requester: apicauth.NewPlatformTokenGetter(priKey, pubKey, keyPwd, tokenURL, aud, clientID, authTimeout),
+	//}
+	//client := coreapi.NewClient(agentConfig.Central.GetTLSConfig(), agentConfig.Central.GetProxyURL())
+	debugf("Event Processor Created with EnvironmentID: %s", ep.environmentID)
 	return ep
 }
 
 // Process - Process the log file, waiting for events
 func (p *EventProcessor) Process(events []publisher.Event) []publisher.Event {
+
 	newEvents := make([]publisher.Event, 0)
 	for _, event := range events {
-		fmt.Println(event)
-		//newEvents, _ = p.ProcessEvent(newEvents, event)
+		newEvents, _ = p.ProcessEvent(newEvents, event)
 	}
 	return newEvents
 }
 
-// ProcessEvent - Process an event from the log file
-//func (p *EventProcessor) ProcessEvent(newEvents []publisher.Event, event publisher.Event) ([]publisher.Event, error) {
-//	// Get the message from the log file
-//	eventMsgFieldVal, err := event.Content.Fields.GetValue("message")
-//	if err != nil {
-//		return newEvents, coreerrors.Wrap(ErrEventNoMsg, err.Error()).FormatError(event)
-//	}
-//	eventMsg, ok := eventMsgFieldVal.(string)
-//	if !ok {
-//		return newEvents, nil
-//	}
-//
-//	// Unmarshal the message into a Log Entry Event
-//	var eventLogEntry EventLogEntry
-//	err = json.Unmarshal([]byte(eventMsg), &eventLogEntry)
-//	if err != nil {
-//		msgErr := coreerrors.Wrap(ErrEventMsgStructure, err.Error()).FormatError(eventMsg)
-//		logp.Error(msgErr)
-//		return newEvents, msgErr
-//	}
-//
-//	//// Event does not have CorrelationID, check if we should throw it out or return it
-//	//if eventLogEntry.CorrelationID == "" {
-//	//	return p.checkEventDetails(newEvents, event)
-//	//}
-//	//
-//	//// Throw out events of APIs not discovered
-//	//var pInfo *apimanager.ProxyInfo
-//	//if len(eventLogEntry.Legs) > 0 {
-//	//	if pInfo = p.apiWatcher.CheckDiscoveredAPIs(eventLogEntry.Legs[0].ServiceName); pInfo == nil {
-//	//		return newEvents, nil
-//	//	}
-//	//}
-//	//
-//	//v7transactionDetails, err := p.getTransactionDetails(event, eventLogEntry, eventMsg)
-//	//if err != nil {
-//	//	return newEvents, coreerrors.Wrap(ErrTrxnDataGet, err.Error())
-//	//}
-//	//
-//	//if v7transactionDetails != nil && len(v7transactionDetails) > 0 {
-//	//	debugf("Transaction Details: %+v", v7transactionDetails)
-//	//	newEvents, err = p.processTransactions(newEvents, event, v7transactionDetails, eventLogEntry, pInfo)
-//	//	if err != nil {
-//	//		trxnErr := coreerrors.Wrap(ErrTrxnDataProcess, err.Error())
-//	//		logp.Error(trxnErr)
-//	//		return newEvents, trxnErr
-//	//	}
-//	//}
-//	return newEvents, nil
-//}
+//ProcessEvent - Process an event from the log file
+func (p *EventProcessor) ProcessEvent(newEvents []publisher.Event, event publisher.Event) ([]publisher.Event, error) {
+	// Get the message from the log file
+	eventMsgFieldVal, err := event.Content.Fields.GetValue("message")
+	if err != nil {
+		return newEvents, coreerrors.Wrap(ErrEventNoMsg, err.Error()).FormatError(event)
+	}
+	eventMsg, ok := eventMsgFieldVal.(string)
+	if !ok {
+		return newEvents, nil
+	}
+
+	// Unmarshal the message into a Log Entry Event
+	var springLogEntry SpringLogEntry
+	err = json.Unmarshal([]byte(eventMsg), &springLogEntry)
+	if err != nil {
+		msgErr := coreerrors.Wrap(ErrEventMsgStructure, err.Error()).FormatError(eventMsg)
+		logp.Error(msgErr)
+		return newEvents, msgErr
+	}
+
+	fmt.Printf("*** JSON : %v", springLogEntry)
+	externalAPIID := getAPIServiceByExternalAPIID(springLogEntry)
+
+	newEvents, err = p.processTransactions(newEvents, event, springLogEntry, externalAPIID)
+	if err != nil {
+		trxnErr := coreerrors.Wrap(ErrTrxnDataProcess, err.Error())
+		logp.Error(trxnErr)
+		return newEvents, trxnErr
+	}
+
+	return newEvents, nil
+}
+
 //
 //func (p *EventProcessor) checkEventDetails(newEvents []publisher.Event, event publisher.Event) ([]publisher.Event, error) {
 //	debugMsg := "event received without CorrelationID, throwning it out"
@@ -203,55 +216,66 @@ func (p *EventProcessor) Process(events []publisher.Event) []publisher.Event {
 //	return ""
 //}
 //
-//func (p *EventProcessor) processTransactions(newEvents []publisher.Event, origLogEvent publisher.Event, v7transaction []Transaction, eventLogEntry EventLogEntry, pInfo *apimanager.ProxyInfo) ([]publisher.Event, error) {
-//	// Iterate over all transactions, creating Condor events for each
-//	for _, leg := range v7transaction {
-//		debugf("Transaction Log Event: %+v", v7transaction)
-//		if _, ok := p.prepareTransactionLogEventMap[leg.Details.Type]; !ok {
-//			debugf("Can't handle transation log events of type %s", leg.Details.Type)
-//			continue
-//		}
-//		transLogEventForLeg, err := p.createCondorEvent(origLogEvent, p.prepareTransactionLogEventMap[leg.Details.Type](leg, eventLogEntry.CorrelationID))
-//		if err != nil {
-//			return newEvents, err // createCondorEvent raises an error code
-//		}
-//		if transLogEventForLeg != nil {
-//			newEvents = append(newEvents, *transLogEventForLeg)
-//		}
-//	}
-//	transSummaryLogEvent, err := p.createCondorEvent(origLogEvent, p.prepareTransactionLogSummary(v7transaction[0].Details, eventLogEntry, pInfo))
-//	if err != nil {
-//		return newEvents, err // createCondorEvent raises an error code
-//	}
-//	if transSummaryLogEvent != nil {
-//		debugf("Summary from Log Events: %+v", v7transaction[0].Details)
-//		newEvents = append(newEvents, *transSummaryLogEvent)
-//	}
-//
-//	return newEvents, nil
-//}
-//
-//func (p *EventProcessor) createCondorEvent(originalLogEvent publisher.Event, transactionEvent transaction.LogEvent) (*publisher.Event, error) {
-//	// Create the beat event then wrap that in the publisher event for Condor
-//
-//	// Add a Retry count to Meta
-//	if originalLogEvent.Content.Meta == nil {
-//		originalLogEvent.Content.Meta = make(map[string]interface{}, 0)
-//	}
-//	originalLogEvent.Content.Meta[retriesKey] = 0
-//	originalLogEvent.Content.Meta[condorKey] = true
-//
-//	beatEvent, err := p.eventGenerator.CreateEvent(transactionEvent, originalLogEvent.Content.Timestamp, originalLogEvent.Content.Meta, originalLogEvent.Content.Fields, originalLogEvent.Content.Private)
-//
-//	if err != nil {
-//		return nil, coreerrors.Wrap(ErrCreateCondorEvent, err.Error())
-//	}
-//	event := publisher.Event{
-//		Content: beatEvent,
-//		Flags:   originalLogEvent.Flags,
-//	}
-//	return &event, nil
-//}
+func (p *EventProcessor) processTransactions(newEvents []publisher.Event, origLogEvent publisher.Event, springLogEntry SpringLogEntry, externalAPIID string) ([]publisher.Event, error) {
+	// Iterate over all transactions, creating Condor events for each
+	//for _, leg := range v7transaction {
+	//	debugf("Transaction Log Event: %+v", v7transaction)
+	//	if _, ok := p.prepareTransactionLogEventMap[leg.Details.Type]; !ok {
+	//		debugf("Can't handle transation log events of type %s", leg.Details.Type)
+	//		continue
+	//	}
+	//	transLogEventForLeg, err := p.createCondorEvent(origLogEvent, p.prepareTransactionLogEventMap[leg.Details.Type](leg, eventLogEntry.CorrelationID))
+	//	if err != nil {
+	//		return newEvents, err // createCondorEvent raises an error code
+	//	}
+	//	if transLogEventForLeg != nil {
+	//		newEvents = append(newEvents, *transLogEventForLeg)
+	//	}
+	//}
+
+	datetime, err := time.Parse(time.RFC3339, springLogEntry.Timestamp)
+	if err != nil {
+		panic(err)
+	}
+	transactionDetail := TransactionDetail{
+
+		Timestamp:   datetime.Unix(),
+		ServiceName: springLogEntry.Name,
+	}
+	transSummaryLogEvent, err := p.createCondorEvent(origLogEvent, p.prepareTransactionLogSummary(transactionDetail, springLogEntry))
+	if err != nil {
+		return newEvents, err // createCondorEvent raises an error code
+	}
+	if transSummaryLogEvent != nil {
+		debugf("Summary from Log Events: %+v", transactionDetail)
+		newEvents = append(newEvents, *transSummaryLogEvent)
+	}
+
+	return newEvents, nil
+}
+
+func (p *EventProcessor) createCondorEvent(originalLogEvent publisher.Event, transactionEvent transaction.LogEvent) (*publisher.Event, error) {
+	// Create the beat event then wrap that in the publisher event for Condor
+
+	// Add a Retry count to Meta
+	if originalLogEvent.Content.Meta == nil {
+		originalLogEvent.Content.Meta = make(map[string]interface{}, 0)
+	}
+	originalLogEvent.Content.Meta[retriesKey] = 0
+	originalLogEvent.Content.Meta[condorKey] = true
+
+	beatEvent, err := p.eventGenerator.CreateEvent(transactionEvent, originalLogEvent.Content.Timestamp, originalLogEvent.Content.Meta, originalLogEvent.Content.Fields, originalLogEvent.Content.Private)
+
+	if err != nil {
+		return nil, coreerrors.Wrap(ErrCreateCondorEvent, err.Error())
+	}
+	event := publisher.Event{
+		Content: beatEvent,
+		Flags:   originalLogEvent.Flags,
+	}
+	return &event, nil
+}
+
 //
 //func prepareHeaders(transactionHeaders []map[string]string) (string, string) {
 //	// Add all headers to a single header object
@@ -365,63 +389,86 @@ func (p *EventProcessor) Process(events []publisher.Event) []publisher.Event {
 //}
 //
 //
-//func (p *EventProcessor) prepareTransactionLogSummary(transactionLegDetail TransactionDetail, eventLogEntry EventLogEntry, pInfo *apimanager.ProxyInfo) transaction.LogEvent {
-//	// Cast the Protocol details appropriately, assuming the Summary is of type HTTP
-//	var httpDetails HTTPTransactionDetail
-//	if transactionLegDetail.Protocol != nil {
-//		httpDetails = transactionLegDetail.Protocol.(HTTPTransactionDetail)
-//	}
-//
-//	// Create the LogEvent for the Transaction Summary
-//	transSummaryStatus := "Unknown"
-//	if httpDetails.Status >= http.StatusOK && httpDetails.Status < http.StatusBadRequest {
-//		transSummaryStatus = "Success"
-//	} else if httpDetails.Status >= http.StatusBadRequest && httpDetails.Status < http.StatusInternalServerError {
-//		transSummaryStatus = "Failure"
-//	} else if httpDetails.Status >= http.StatusInternalServerError && httpDetails.Status < http.StatusNetworkAuthenticationRequired {
-//		transSummaryStatus = "Exception"
-//	}
-//	status := strconv.Itoa(httpDetails.Status)
-//	transSum := transaction.LogEvent{
-//		Version:           "1.0",
-//		Stamp:             transactionLegDetail.Timestamp,
-//		TransactionID:     eventLogEntry.CorrelationID,
-//		TenantID:          p.tenantID,
-//		TrcbltPartitionID: p.tenantID,
-//		APICDeployment:    p.deployment,
-//		EnvironmentID:     p.environmentID,
-//		Environment:       p.environment,
-//		Type:              "transactionSummary",
-//		TransactionSummary: &transaction.Summary{
-//			Status:       transSummaryStatus,
-//			StatusDetail: status,
-//			Duration:     transactionLegDetail.Duration,
-//			Team: &transaction.Team{
-//				ID: p.teamID,
-//			},
-//			EntryPoint: &transaction.EntryPoint{
-//				Type:   httpKey,
-//				Method: httpDetails.Method,
-//				Path:   httpDetails.URI,
-//				Host:   httpDetails.LocalAddr,
-//			},
-//			Proxy: &transaction.Proxy{
-//				Name:     pInfo.ProxyName,
-//				ID:       transaction.FormatProxyID(pInfo.ProxyID),
-//				Revision: 1,
-//			},
-//		},
-//	}
-//	if len(eventLogEntry.ServiceContexts) > 0 {
-//		appName := eventLogEntry.ServiceContexts[0].App
-//		transSum.TransactionSummary.Application = new(transaction.Application)
-//
-//		// Add the V7 Application ID, with prefix, and Name to the event
-//		cachedApp := p.apiWatcher.GetCachedApplicationByName(appName)
-//		if cachedApp != nil {
-//			transSum.TransactionSummary.Application.ID = transaction.FormatApplicationID(cachedApp.ID)
-//		}
-//		transSum.TransactionSummary.Application.Name = appName
-//	}
-//	return transSum
-//}
+func (p *EventProcessor) prepareTransactionLogSummary(transactionLegDetail TransactionDetail, springLogEntry SpringLogEntry) transaction.LogEvent {
+	// Cast the Protocol details appropriately, assuming the Summary is of type HTTP
+	var httpDetails HTTPTransactionDetail
+	if transactionLegDetail.Protocol != nil {
+		httpDetails = transactionLegDetail.Protocol.(HTTPTransactionDetail)
+	}
+
+	// Create the LogEvent for the Transaction Summary
+	transSummaryStatus := "Unknown"
+	if httpDetails.Status >= http.StatusOK && httpDetails.Status < http.StatusBadRequest {
+		transSummaryStatus = "Success"
+	} else if httpDetails.Status >= http.StatusBadRequest && httpDetails.Status < http.StatusInternalServerError {
+		transSummaryStatus = "Failure"
+	} else if httpDetails.Status >= http.StatusInternalServerError && httpDetails.Status < http.StatusNetworkAuthenticationRequired {
+		transSummaryStatus = "Exception"
+	}
+	status := strconv.Itoa(httpDetails.Status)
+	transSum := transaction.LogEvent{
+		Version:           "1.0",
+		Stamp:             transactionLegDetail.Timestamp,
+		TransactionID:     springLogEntry.TraceId,
+		TenantID:          p.tenantID,
+		TrcbltPartitionID: p.tenantID,
+		APICDeployment:    p.deployment,
+		EnvironmentID:     p.environmentID,
+		Environment:       p.environment,
+		Type:              "transactionSummary",
+		TransactionSummary: &transaction.Summary{
+			Status:       transSummaryStatus,
+			StatusDetail: status,
+			Duration:     transactionLegDetail.Duration,
+			Team: &transaction.Team{
+				ID: p.teamID,
+			},
+			EntryPoint: &transaction.EntryPoint{
+				Type:   httpKey,
+				Method: httpDetails.Method,
+				Path:   httpDetails.URI,
+				Host:   httpDetails.LocalAddr,
+			},
+			//Proxy: &transaction.Proxy{
+			//	Name:     pInfo.ProxyName,
+			//	ID:       transaction.FormatProxyID(pInfo.ProxyID),
+			//	Revision: 1,
+			//},
+		},
+	}
+	//if len(eventLogEntry.ServiceContexts) > 0 {
+	//	appName := eventLogEntry.ServiceContexts[0].App
+	//	transSum.TransactionSummary.Application = new(transaction.Application)
+	//
+	//	// Add the V7 Application ID, with prefix, and Name to the event
+	//	//cachedApp := p.apiWatcher.GetCachedApplicationByName(appName)
+	//	//if cachedApp != nil {
+	//	//	transSum.TransactionSummary.Application.ID = transaction.FormatApplicationID(cachedApp.ID)
+	//	//}
+	//	transSum.TransactionSummary.Application.Name = appName
+	//}
+	return transSum
+}
+
+func getAPIServiceByExternalAPIID(springLogEntry SpringLogEntry) string {
+
+	query := map[string]string{
+		"query": "attributes.name" + "==\"" + springLogEntry.Name + "\" and attributes.version==\"" + springLogEntry.Version + "\"",
+	}
+
+	resp, err := client.ExecuteAPI(coreapi.GET, environmentURL+"/apiservices", query, nil)
+	if err != nil {
+
+		panic(err)
+	}
+	apiServices := make([]v1alpha1.APIService, 0)
+	json.Unmarshal(resp, &apiServices)
+	if len(apiServices) > 0 {
+		attributes := &apiServices[0].Attributes
+		externalAPIID := (*attributes)["externalAPIID"]
+		return externalAPIID
+		// fmt.Println(attributes.["externalAPIID"])
+	}
+	return ""
+
+}
