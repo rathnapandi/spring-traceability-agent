@@ -94,19 +94,19 @@ type ServiceContext struct {
 }
 
 // EventLogEntry - log entry created when an API in v7 is used
-type EventLogEntry struct {
-	CorrelationID   string              `json:"correlationId"`
-	CustomMsgAtts   struct{}            `json:"customMsgAtts"`
-	Duration        int                 `json:"duration"`
-	Legs            []TransactionDetail `json:"legs"`
-	Path            string              `json:"path"`
-	Protocol        string              `json:"protocol"`
-	ProtocolSrc     string              `json:"protocolSrc"`
-	ServiceContexts []ServiceContext    `json:"serviceContexts"`
-	Status          string              `json:"status"`
-	Time            int                 `json:"time"`
-	Type            string              `json:"type"`
-}
+//type EventLogEntry struct {
+//	CorrelationID   string              `json:"correlationId"`
+//	CustomMsgAtts   struct{}            `json:"customMsgAtts"`
+//	Duration        int                 `json:"duration"`
+//	Legs            []TransactionDetail `json:"legs"`
+//	Path            string              `json:"path"`
+//	Protocol        string              `json:"protocol"`
+//	ProtocolSrc     string              `json:"protocolSrc"`
+//	ServiceContexts []ServiceContext    `json:"serviceContexts"`
+//	Status          string              `json:"status"`
+//	Time            int                 `json:"time"`
+//	Type            string              `json:"type"`
+//}
 
 type SpringLogEntry struct {
 	Timestamp  string `json:"@timestamp"`
